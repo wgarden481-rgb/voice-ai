@@ -12,10 +12,13 @@ ul{color:var(--mut);padding-left:20px}
 <h1>Hold two keys. Ask out loud. Hear the answer.</h1>
 <p>Voice AI sits in the background on your Windows PC. Hold <kbd>Left Ctrl</kbd> + <kbd>Left Alt</kbd>, ask your question, and let go.</p>
 <div class="demo" aria-label="Example"><b>Who is the tallest man ever?</b>Robert Wadlow, at 8 feet 11 inches (272 cm).</div>
-<a class="dl" href="https://github.com/YOUR-USERNAME/YOUR-REPO/releases/download/latest/Voice-AI-Setup.exe" download>Download for Windows</a>
+<a class="dl" id="dl" href="#">Download for Windows</a>
 <h2>What the installer asks</h2>
 <ul><li>Permission to make changes to your computer (Windows will show its standard prompt).</li>
 <li>Where to install Voice AI.</li>
 <li>After install: your language, the AI's voice, and microphone access.</li></ul>
 <p>Voice AI only watches for the Left Ctrl + Left Alt combination. Your question is sent to Groq, which runs Meta's Llama AI for free.</p>
-</main></body></html>
+</main><script>
+(function(){var u=location.hostname.split(".")[0],r=location.pathname.split("/")[1];
+document.getElementById("dl").href="https://github.com/"+u+"/"+r+"/releases/download/latest/Voice-AI-Setup.exe";})();
+</script></body></html>
