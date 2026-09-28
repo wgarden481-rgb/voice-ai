@@ -15,7 +15,7 @@ a{color:#4b5df0}#msg{margin-top:10px;color:#b3261e}
 <div><button class="alt" onclick="go(1)">Back</button><button onclick="go(3)">Continue</button></div></div>
 
 <div class="step" id="s3"><h1>Connect the AI and permissions</h1>
-<p>Voice AI uses Meta's Llama AI through Groq, which is free (no credit card). Create a free account, make an API key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>, and paste it here.</p>
+<p>Voice AI uses a free open-source AI (OpenAI's gpt-oss) through Groq, which needs no credit card. Create a free account, make an API key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>, and paste it here.</p>
 <label for="key">Groq API key</label><input id="key" type="password" placeholder="Paste key">
 <label><input type="checkbox" id="auto" checked style="width:auto"> Start Voice AI when Windows starts</label>
 <button class="alt" onclick="mic()">Test microphone</button><div id="msg"></div>

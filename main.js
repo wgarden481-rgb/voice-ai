@@ -48,12 +48,21 @@ ipcMain.handle('ask',async(e,wav)=>{
     let r=await fetch(base+'/audio/transcriptions',{method:'POST',headers:H,body:fd}),j=await r.json();
     if(!r.ok)throw new Error(j.error?.message||r.status);
     const question=(j.text||'').trim();if(!question)return{question:'',answer:''};
-    r=await fetch(base+'/chat/completions',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({
-      model:'llama-3.3-70b-versatile',temperature:0.5,max_tokens:250,messages:[
-      {role:'system',content:`You are a friendly voice assistant. Answer in ${settings.langName} in 1-3 short spoken-style sentences. No markdown, lists or emojis.`},
-      {role:'user',content:question}]})});
-    j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);
-    return{question,answer:j.choices[0].message.content.trim()};
+    // Groq retires models often. If one is gone, the next in this list is tried.
+    const MODELS=['openai/gpt-oss-120b','openai/gpt-oss-20b'];
+    let answer='',lastErr='';
+    for(const model of MODELS){
+      r=await fetch(base+'/chat/completions',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({
+        model,reasoning_effort:'low',max_completion_tokens:1200,messages:[
+        {role:'system',content:`You are a friendly voice assistant. Answer in ${settings.langName} in 1-3 short spoken-style sentences. No markdown, lists or emojis.`},
+        {role:'user',content:question}]})});
+      j=await r.json();
+      if(r.ok){answer=(j.choices?.[0]?.message?.content||'').trim();if(answer)break;lastErr='Empty answer';continue}
+      lastErr=j.error?.message||String(r.status);
+      if(!/does not exist|decommission|not found|no access|access to it/i.test(lastErr))throw new Error(lastErr);
+    }
+    if(!answer)throw new Error(lastErr||'No answer');
+    return{question,answer};
   }catch(err){return{error:String(err.message||err)}}
 });
 ipcMain.on('hide',()=>overlay&&overlay.hide());
