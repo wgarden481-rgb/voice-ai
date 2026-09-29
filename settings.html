@@ -1,62 +1,106 @@
 <!doctype html><meta charset="utf-8"><title>Voice AI Settings</title><style>
-body{margin:0;font:15px/1.5 "Segoe UI",system-ui,sans-serif;background:#f3f5f9;color:#1b2333;display:flex;height:100vh}
-nav{width:190px;background:#e8ebf5;padding:18px 0;box-sizing:border-box;flex-shrink:0}
-nav button{display:block;width:100%;text-align:left;padding:12px 20px;border:0;background:none;font:inherit;cursor:pointer;color:#1b2333}
-nav button.on{background:#fff;font-weight:600;border-left:3px solid #4b5df0}
-main{flex:1;padding:28px 30px;overflow-y:auto;box-sizing:border-box}
-h1{font-size:20px;margin:0 0 14px}
-.tab{display:none}.tab.on{display:block}
-label{display:block;margin:14px 0 6px;font-weight:600}
-select,input,textarea{width:100%;padding:9px;border:1px solid #c5cce0;border-radius:8px;font:inherit;box-sizing:border-box}
-button.act{padding:9px 16px;border:0;border-radius:8px;background:#4b5df0;color:#fff;font:inherit;cursor:pointer;margin:14px 8px 0 0}
-button.alt{background:#dfe4f5;color:#1b2333}
-.hint{color:#4a5568;font-size:13.5px}
-.status{margin-top:6px;font-size:13.5px}
-.ok{color:#1a7f37}.err{color:#b3261e}
-#saveBar{position:sticky;bottom:0;background:#f3f5f9;padding-top:12px}
-kbd{background:#fff;border:1px solid #c5cce0;border-radius:5px;padding:1px 8px}
+:root{--bg:#f3f5f9;--card:#fff;--ink:#1b2333;--mut:#5a6478;--line:#e1e5f0;--acc:#4b5df0;--acc-dk:#3a49d6;--ok:#1a7f37;--err:#c0362c}
+*{box-sizing:border-box}
+body{margin:0;font:14.5px/1.55 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);display:flex;height:100vh;overflow:hidden}
+nav{width:196px;background:var(--card);border-right:1px solid var(--line);padding:22px 12px;flex-shrink:0}
+nav .brand{font-weight:700;font-size:15.5px;padding:0 10px 18px}
+nav button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:10px 12px;border:0;background:none;font:inherit;cursor:pointer;color:var(--mut);border-radius:9px;margin-bottom:2px}
+nav button:hover{background:#f0f2fa}
+nav button.on{background:#eceeff;color:var(--acc-dk);font-weight:600}
+main{flex:1;padding:30px 36px;overflow-y:auto}
+.tab{display:none;max-width:520px}.tab.on{display:block;animation:fade .15s ease}
+@keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+h1{font-size:19px;margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 20px;font-size:13.5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
+label{display:block;margin:0 0 6px;font-weight:600;font-size:13.5px}
+select,input,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font:inherit;background:#fbfbfe}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}
+.field{margin-bottom:14px}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+button.act{padding:9px 16px;border:0;border-radius:9px;background:var(--acc);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button.act:hover{background:var(--acc-dk)}
+button.alt{background:#eceeff;color:var(--acc-dk);font-weight:600}
+button.ghost{background:none;color:var(--err);border:1px solid var(--line);padding:6px 10px;border-radius:8px;font:inherit;cursor:pointer}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:3px 0}
+.dot{width:8px;height:8px;border-radius:50%;background:#c5cce0;flex-shrink:0}
+.dot.ok{background:var(--ok)}.dot.err{background:var(--err)}
+.msg{margin-top:8px;font-size:13px}
+.msg.ok{color:var(--ok)}.msg.err{color:var(--err)}
+.contact{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.contact input{flex:1}
+.contact button{flex:0 0 auto;width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--err);cursor:pointer;font-size:15px;line-height:1}
+kbd{background:#fff;border:1px solid var(--line);border-radius:5px;padding:1px 8px}
+#saveBar{position:sticky;bottom:-30px;background:linear-gradient(var(--bg)00,var(--bg));padding:14px 0 4px;display:flex;align-items:center;gap:12px;margin-top:6px}
+.hint{color:var(--mut);font-size:13px;margin:0 0 14px}
+a{color:var(--acc-dk)}
 </style>
 <nav>
-  <button class="on" data-tab="t1">Language &amp; Voice</button>
-  <button data-tab="t2">AI Key</button>
-  <button data-tab="t3">Gmail &amp; Contacts</button>
-  <button data-tab="t4">Advanced</button>
+  <div class="brand">🎙️ Voice AI</div>
+  <button class="on" data-tab="t1">🌐&nbsp; Language &amp; Voice</button>
+  <button data-tab="t2">🔑&nbsp; AI Key</button>
+  <button data-tab="t3">✉️&nbsp; Gmail &amp; Contacts</button>
+  <button data-tab="t4">⚙️&nbsp; Advanced</button>
 </nav>
 <main>
   <div class="tab on" id="t1">
     <h1>Language &amp; Voice</h1>
-    <label for="lang">Language</label><select id="lang"></select>
-    <label for="voice">Voice</label><select id="voice"></select>
-    <button class="act alt" type="button" onclick="test()">Play sample</button>
+    <p class="sub">Choose what language Voice AI listens and replies in, and how it sounds.</p>
+    <div class="card">
+      <div class="field"><label for="lang">Language</label><select id="lang"></select></div>
+      <div class="field"><label for="voice">Voice</label><select id="voice"></select></div>
+      <button class="act alt" type="button" onclick="test()">▶ Play sample</button>
+    </div>
   </div>
 
   <div class="tab" id="t2">
     <h1>AI Key</h1>
-    <p class="hint">Voice AI uses a free open-source AI through Groq. Get a free key (no credit card) at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>.</p>
-    <label for="key">Groq API key</label><input id="key" type="password" placeholder="Paste key">
-    <div id="keyStatus" class="status"></div>
+    <p class="sub">Voice AI answers using a free open-source AI through Groq — no credit card needed.</p>
+    <div class="card">
+      <p class="hint">Get a free key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>.</p>
+      <div class="field"><label for="key">Groq API key</label><input id="key" type="password" placeholder="Paste key"></div>
+      <div class="pill" id="keyStatus"><span class="dot"></span><span>Checking…</span></div>
+    </div>
   </div>
 
   <div class="tab" id="t3">
     <h1>Gmail &amp; Contacts</h1>
-    <p class="hint">Lets the AI send email after you confirm by voice. Needs a one-time Gmail app password: turn on 2-Step Verification, then create one at <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a>.</p>
-    <label for="gmail">Your Gmail address</label><input id="gmail" placeholder="you@gmail.com">
-    <label for="gpass">Gmail app password</label><input id="gpass" type="password" placeholder="16-letter app password">
-    <div id="gmailStatus" class="status"></div>
-    <button class="act alt" type="button" onclick="clearGmail()">Disconnect Gmail</button>
-    <label for="contacts">Contacts, one per line as: Name, email</label>
-    <textarea id="contacts" rows="5" placeholder="Mom, mom@example.com"></textarea>
+    <p class="sub">Let the AI read your inbox and send email after you confirm out loud.</p>
+    <div class="card">
+      <p class="hint">Needs a one-time Gmail app password: turn on 2-Step Verification, then create one at <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a>.</p>
+      <div class="field"><label for="gmail">Your Gmail address</label><input id="gmail" placeholder="you@gmail.com"></div>
+      <div class="field"><label for="gpass">Gmail app password</label><input id="gpass" type="password" placeholder="16-letter app password"></div>
+      <div class="pill" id="gmailStatus"><span class="dot"></span><span>Not connected</span></div>
+      <div class="btnrow">
+        <button class="act alt" type="button" onclick="testEmail()">Send test email</button>
+        <button class="act alt" type="button" onclick="testInbox()">Check inbox now</button>
+        <button class="ghost" type="button" onclick="clearGmail()">Disconnect</button>
+      </div>
+      <div id="gmailTestMsg" class="msg"></div>
+    </div>
+    <div class="card">
+      <label style="margin-bottom:10px">Contacts</label>
+      <div id="contactRows"></div>
+      <button class="act alt" type="button" onclick="addContact()">＋ Add contact</button>
+      <p class="hint" style="margin-top:12px;margin-bottom:0">Say a saved name, like "email Mom that I'll be late", and the AI will match it here.</p>
+    </div>
   </div>
 
   <div class="tab" id="t4">
     <h1>Advanced</h1>
-    <p><b>Hotkey:</b> hold <kbd>Left Ctrl</kbd> + <kbd>Left Alt</kbd> to talk, let go to send.</p>
-    <label><input type="checkbox" id="auto" style="width:auto"> Start Voice AI when Windows starts</label>
-    <button class="act alt" type="button" onclick="mic()">Test microphone</button>
-    <div id="micStatus" class="status"></div>
+    <div class="card">
+      <p><b>Hotkey:</b> hold <kbd>Left Ctrl</kbd> + <kbd>Left Alt</kbd> to talk, let go to send.</p>
+      <label style="margin-top:14px"><input type="checkbox" id="auto" style="width:auto"> Start Voice AI when Windows starts</label>
+    </div>
+    <div class="card">
+      <button class="act alt" type="button" onclick="mic()">🎤 Test microphone</button>
+      <div id="micStatus" class="msg"></div>
+    </div>
   </div>
 
-  <div id="saveBar"><button class="act" type="button" onclick="save()">Save changes</button><span id="saveMsg" class="status"></span></div>
+  <div id="saveBar"><button class="act" type="button" onclick="save()">Save changes</button><span id="saveMsg" class="msg"></span></div>
 </main>
 <script>
 const L=[['English','en-US'],['Español','es-ES'],['Français','fr-FR'],['Deutsch','de-DE'],['Italiano','it-IT'],['Português','pt-BR'],['日本語','ja-JP'],['한국어','ko-KR'],['中文','zh-CN'],['हिन्दी','hi-IN'],['العربية','ar-SA'],['Русский','ru-RU']];
@@ -86,38 +130,70 @@ function test(){
 }
 async function mic(){
   try{(await navigator.mediaDevices.getUserMedia({audio:true})).getTracks().forEach(t=>t.stop());
-    $('micStatus').className='status ok';$('micStatus').textContent='Microphone works.';}
-  catch{$('micStatus').className='status err';$('micStatus').textContent='Microphone blocked. Allow it in Windows Settings › Privacy › Microphone.';}
+    $('micStatus').className='msg ok';$('micStatus').textContent='Microphone works.';}
+  catch{$('micStatus').className='msg err';$('micStatus').textContent='Microphone blocked. Allow it in Windows Settings › Privacy › Microphone.';}
 }
-function clearGmail(){$('gmail').value='';$('gpass').value='';$('gpass').placeholder='16-letter app password';$('gmailStatus').textContent='Will disconnect on save.';}
+function clearGmail(){
+  $('gmail').value='';$('gpass').value='';$('gpass').placeholder='16-letter app password';
+  setPill('gmailStatus',null,'Will disconnect when you save');
+}
+function esc(s){return String(s||'').replace(/"/g,'&quot;')}
+function contactRow(name,email){
+  const row=document.createElement('div');row.className='contact';
+  row.innerHTML=`<input class="c-name" placeholder="Name" value="${esc(name)}"><input class="c-email" placeholder="email@example.com" value="${esc(email)}"><button type="button" title="Remove">✕</button>`;
+  row.querySelector('button').onclick=()=>row.remove();
+  return row;
+}
+function addContact(){$('contactRows').appendChild(contactRow('',''));$('contactRows').lastChild.querySelector('.c-name').focus();}
+
+function setPill(id,ok,text){ // ok: true/false/null
+  const p=$(id);p.querySelector('span:last-child').textContent=text;
+  p.querySelector('.dot').className='dot'+(ok===true?' ok':ok===false?' err':'');
+}
+
+async function testEmail(){
+  $('gmailTestMsg').className='msg';$('gmailTestMsg').textContent='Sending a test email to yourself…';
+  const r=await api.testEmail();
+  $('gmailTestMsg').className='msg '+(r.ok?'ok':'err');
+  $('gmailTestMsg').textContent=r.ok?'Sent! Check your inbox.':r.error;
+}
+async function testInbox(){
+  $('gmailTestMsg').className='msg';$('gmailTestMsg').textContent='Checking the inbox…';
+  const r=await api.testInbox();
+  if(!r.ok){$('gmailTestMsg').className='msg err';$('gmailTestMsg').textContent=r.error;return}
+  $('gmailTestMsg').className='msg ok';
+  $('gmailTestMsg').textContent=r.emails.length?('Read okay — most recent: "'+r.emails[r.emails.length-1].subject+'"'):'Connected, but the inbox looks empty.';
+}
 
 async function load(){
   current=await api.settings();
   if(!current)return;
   $('lang').value=current.lang;voices();
   $('auto').checked=!!current.autostart;
-  if(current.hasKey){$('key').placeholder='Saved. Leave blank to keep it';$('keyStatus').className='status ok';$('keyStatus').textContent='A key is saved.';}
-  else{$('keyStatus').className='status err';$('keyStatus').textContent='No key saved yet — the AI will not work without one.';}
+  if(current.hasKey)setPill('keyStatus',true,'A key is saved'),$('key').placeholder='Saved. Leave blank to keep it';
+  else setPill('keyStatus',false,'No key saved — the AI will not work yet');
   if(current.gmail){
     $('gmail').value=current.gmail.address;
-    if(current.gmail.hasPass){$('gpass').placeholder='Saved. Leave blank to keep it';$('gmailStatus').className='status ok';$('gmailStatus').textContent='Connected as '+current.gmail.address;}
+    if(current.gmail.hasPass){$('gpass').placeholder='Saved. Leave blank to keep it';setPill('gmailStatus',true,'Connected as '+current.gmail.address);}
   }
-  $('contacts').value=(current.contacts||[]).map(c=>c.name+', '+c.email).join('\n');
+  $('contactRows').innerHTML='';
+  (current.contacts&&current.contacts.length?current.contacts:[{name:'',email:''}]).forEach(c=>$('contactRows').appendChild(contactRow(c.name,c.email)));
 }
 async function save(){
   if(!$('key').value.trim()&&!(current&&current.hasKey)){
     document.querySelector('[data-tab="t2"]').click();
-    $('keyStatus').className='status err';$('keyStatus').textContent='Paste a Groq key before saving.';
+    setPill('keyStatus',false,'Paste a Groq key before saving');
     return;
   }
   const o=$('lang').selectedOptions[0];
+  const contacts=Array.from(document.querySelectorAll('.contact')).map(r=>({name:r.querySelector('.c-name').value.trim(),email:r.querySelector('.c-email').value.trim()})).filter(c=>c.name&&/@/.test(c.email));
   await api.save({
     lang:o.value,langName:o.text,voice:$('voice').value,
     apiKey:$('key').value.trim(),autostart:$('auto').checked,
     gmail:{address:$('gmail').value.trim(),pass:$('gpass').value.replace(/\s/g,'')},
-    contacts:$('contacts').value.split('\n').map(l=>l.split(',').map(x=>x.trim())).filter(p=>p[0]&&/@/.test(p[1]||'')).map(p=>({name:p[0],email:p[1]}))
+    contacts
   });
-  $('saveMsg').className='status ok';$('saveMsg').textContent='Saved. Closing…';
+  $('saveMsg').className='msg ok';$('saveMsg').textContent='Saved. Closing…';
 }
 load();
 </script>

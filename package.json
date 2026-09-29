@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "uiohook-napi": "^1.5.4",
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^6.9.16",
+    "imapflow": "^1.0.184",
+    "mailparser": "^3.7.2"
   },
   "devDependencies": {
     "electron": "^33.2.0",
