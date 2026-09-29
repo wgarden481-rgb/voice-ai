@@ -25,6 +25,7 @@
       "preload.js",
       "overlay.html",
       "setup.html",
+      "settings.html",
       "icon.png"
     ],
     "asarUnpack": [

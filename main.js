@@ -1,4 +1,4 @@
-const {app,BrowserWindow,Tray,Menu,ipcMain,screen,session,nativeImage,safeStorage,Notification}=require('electron');
+const {app,BrowserWindow,Tray,Menu,ipcMain,screen,session,nativeImage,safeStorage,Notification,shell}=require('electron');
 const path=require('path'),fs=require('fs');
 const {uIOhook}=require('uiohook-napi');
 const nodemailer=require('nodemailer');
@@ -75,14 +75,20 @@ async function chat(body){
 const fn=(name,description,properties={},required=[])=>({type:'function',function:{name,description,parameters:{type:'object',properties,required}}});
 const S=d=>({type:'string',description:d});
 const TOOLS=[
-  fn('look_up','Search the live web. Use for anything recent, current, news, sports, prices, or facts that may have changed.',{query:S('search query')},['query']),
+  fn('look_up','Search the live web for information. Use for anything recent, current, news, sports, prices, or facts that may have changed. This does NOT open a browser, it only returns text.',{query:S('search query')},['query']),
+  fn('open_website','Open a website in the user\'s default browser. Use when the user says "open", "go to", "pull up", or names a site or app they want visiting, e.g. YouTube, Gmail, a news site.',{url:S('The site to open, e.g. "youtube.com" or "https://example.com"')},['url']),
   fn('draft_email','Prepare an email to a saved contact. Does NOT send it.',{contact:S('name of a saved contact'),subject:S('subject'),body:S('full email text')},['contact','subject','body']),
   fn('send_pending_email','Send the drafted email. Only after the user clearly said yes in their newest message.'),
   fn('cancel_pending_email','Discard the drafted email.')];
+function normUrl(u){
+  u=String(u||'').trim();if(!u)return null;
+  if(!/^[a-z][a-z0-9+.-]*:\/\//i.test(u))u='https://'+u;
+  try{const p=new URL(u);return /^https?:$/.test(p.protocol)?p.href:null}catch{return null}
+}
 function sys(){
   const cs=(settings.contacts||[]).map(c=>c.name).join(', ')||'none';
   const p=pending&&Date.now()-pending.t<300000?pending:null;if(!p)pending=null;
-  return `You are a friendly voice assistant on the user's PC. Today is ${today()}. Your built-in knowledge is old, so for anything recent, current or changeable (news, events, sports, prices, who holds a job, weather, releases) you MUST call look_up instead of answering from memory, and never say you only know up to a past year. Reply in ${settings.langName} in 1-3 short spoken-style sentences, no markdown, lists or emojis. Saved email contacts: ${cs}. To email someone call draft_email, then read the draft back briefly (who, subject, gist) and ask the user to say yes to send. Call send_pending_email only when the user's newest message clearly confirms, and cancel_pending_email if they decline. Never say an email was sent unless send_pending_email returned "Sent".`
+  return `You are a friendly voice assistant on the user's PC. Today is ${today()}. Your built-in knowledge is old, so for anything recent, current or changeable (news, events, sports, prices, who holds a job, weather, releases) you MUST call look_up instead of answering from memory, and never say you only know up to a past year. If the user asks you to open, visit, go to, or pull up a website or app (like "open YouTube" or "go to gmail.com"), call open_website instead of look_up — that actually launches their browser there. Reply in ${settings.langName} in 1-3 short spoken-style sentences, no markdown, lists or emojis. Saved email contacts: ${cs}. To email someone call draft_email, then read the draft back briefly (who, subject, gist) and ask the user to say yes to send. Call send_pending_email only when the user's newest message clearly confirms, and cancel_pending_email if they decline. Never say an email was sent unless send_pending_email returned "Sent".`
    +(p?` A draft is waiting: to ${p.name}, subject "${p.subject}", body "${p.body}".`:'');
 }
 async function runTool(n,a,turn,status){
@@ -91,6 +97,13 @@ async function runTool(n,a,turn,status){
     const j=await chat({messages:[{role:'system',content:`Today is ${today()}. Search the web and report the key current facts in under 120 words.`},{role:'user',content:a.query}],
       tools:[{type:'browser_search'}],reasoning_effort:'low',max_completion_tokens:3000});
     return j.choices[0].message.content||'No results found.';
+  }
+  if(n==='open_website'){
+    const href=normUrl(a.url);
+    if(!href)return `Could not understand the web address "${a.url}". Ask the user which site they mean.`;
+    status('Opening '+href+'…');
+    await shell.openExternal(href);
+    return 'Opened '+href+' in the browser.';
   }
   if(n==='draft_email'){
     const g=settings.gmail;if(!g||!g.pass)return 'Gmail is not connected. Tell the user to add it in Voice AI settings (tray icon).';
