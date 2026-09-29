@@ -1,0 +1,123 @@
+<!doctype html><meta charset="utf-8"><title>Voice AI Settings</title><style>
+body{margin:0;font:15px/1.5 "Segoe UI",system-ui,sans-serif;background:#f3f5f9;color:#1b2333;display:flex;height:100vh}
+nav{width:190px;background:#e8ebf5;padding:18px 0;box-sizing:border-box;flex-shrink:0}
+nav button{display:block;width:100%;text-align:left;padding:12px 20px;border:0;background:none;font:inherit;cursor:pointer;color:#1b2333}
+nav button.on{background:#fff;font-weight:600;border-left:3px solid #4b5df0}
+main{flex:1;padding:28px 30px;overflow-y:auto;box-sizing:border-box}
+h1{font-size:20px;margin:0 0 14px}
+.tab{display:none}.tab.on{display:block}
+label{display:block;margin:14px 0 6px;font-weight:600}
+select,input,textarea{width:100%;padding:9px;border:1px solid #c5cce0;border-radius:8px;font:inherit;box-sizing:border-box}
+button.act{padding:9px 16px;border:0;border-radius:8px;background:#4b5df0;color:#fff;font:inherit;cursor:pointer;margin:14px 8px 0 0}
+button.alt{background:#dfe4f5;color:#1b2333}
+.hint{color:#4a5568;font-size:13.5px}
+.status{margin-top:6px;font-size:13.5px}
+.ok{color:#1a7f37}.err{color:#b3261e}
+#saveBar{position:sticky;bottom:0;background:#f3f5f9;padding-top:12px}
+kbd{background:#fff;border:1px solid #c5cce0;border-radius:5px;padding:1px 8px}
+</style>
+<nav>
+  <button class="on" data-tab="t1">Language &amp; Voice</button>
+  <button data-tab="t2">AI Key</button>
+  <button data-tab="t3">Gmail &amp; Contacts</button>
+  <button data-tab="t4">Advanced</button>
+</nav>
+<main>
+  <div class="tab on" id="t1">
+    <h1>Language &amp; Voice</h1>
+    <label for="lang">Language</label><select id="lang"></select>
+    <label for="voice">Voice</label><select id="voice"></select>
+    <button class="act alt" type="button" onclick="test()">Play sample</button>
+  </div>
+
+  <div class="tab" id="t2">
+    <h1>AI Key</h1>
+    <p class="hint">Voice AI uses a free open-source AI through Groq. Get a free key (no credit card) at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>.</p>
+    <label for="key">Groq API key</label><input id="key" type="password" placeholder="Paste key">
+    <div id="keyStatus" class="status"></div>
+  </div>
+
+  <div class="tab" id="t3">
+    <h1>Gmail &amp; Contacts</h1>
+    <p class="hint">Lets the AI send email after you confirm by voice. Needs a one-time Gmail app password: turn on 2-Step Verification, then create one at <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a>.</p>
+    <label for="gmail">Your Gmail address</label><input id="gmail" placeholder="you@gmail.com">
+    <label for="gpass">Gmail app password</label><input id="gpass" type="password" placeholder="16-letter app password">
+    <div id="gmailStatus" class="status"></div>
+    <button class="act alt" type="button" onclick="clearGmail()">Disconnect Gmail</button>
+    <label for="contacts">Contacts, one per line as: Name, email</label>
+    <textarea id="contacts" rows="5" placeholder="Mom, mom@example.com"></textarea>
+  </div>
+
+  <div class="tab" id="t4">
+    <h1>Advanced</h1>
+    <p><b>Hotkey:</b> hold <kbd>Left Ctrl</kbd> + <kbd>Left Alt</kbd> to talk, let go to send.</p>
+    <label><input type="checkbox" id="auto" style="width:auto"> Start Voice AI when Windows starts</label>
+    <button class="act alt" type="button" onclick="mic()">Test microphone</button>
+    <div id="micStatus" class="status"></div>
+  </div>
+
+  <div id="saveBar"><button class="act" type="button" onclick="save()">Save changes</button><span id="saveMsg" class="status"></span></div>
+</main>
+<script>
+const L=[['English','en-US'],['Español','es-ES'],['Français','fr-FR'],['Deutsch','de-DE'],['Italiano','it-IT'],['Português','pt-BR'],['日本語','ja-JP'],['한국어','ko-KR'],['中文','zh-CN'],['हिन्दी','hi-IN'],['العربية','ar-SA'],['Русский','ru-RU']];
+const $=id=>document.getElementById(id);
+let current=null;
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');$(b.dataset.tab).classList.add('on');
+});
+
+$('lang').innerHTML=L.map(l=>`<option value="${l[1]}">${l[0]}</option>`).join('');
+function voices(){
+  const p=$('lang').value.split('-')[0],v=speechSynthesis.getVoices().filter(x=>x.lang.startsWith(p));
+  $('voice').innerHTML=(v.length?v:speechSynthesis.getVoices()).map(x=>`<option>${x.name}</option>`).join('');
+  if(current&&current.voice)$('voice').value=current.voice;
+}
+speechSynthesis.onvoiceschanged=voices;
+$('lang').onchange=voices;
+
+function test(){
+  speechSynthesis.cancel();
+  const t=new SpeechSynthesisUtterance('Hi, this is how I will sound.');t.lang=$('lang').value;
+  const v=speechSynthesis.getVoices().find(x=>x.name===$('voice').value);if(v)t.voice=v;
+  speechSynthesis.speak(t);
+}
+async function mic(){
+  try{(await navigator.mediaDevices.getUserMedia({audio:true})).getTracks().forEach(t=>t.stop());
+    $('micStatus').className='status ok';$('micStatus').textContent='Microphone works.';}
+  catch{$('micStatus').className='status err';$('micStatus').textContent='Microphone blocked. Allow it in Windows Settings › Privacy › Microphone.';}
+}
+function clearGmail(){$('gmail').value='';$('gpass').value='';$('gpass').placeholder='16-letter app password';$('gmailStatus').textContent='Will disconnect on save.';}
+
+async function load(){
+  current=await api.settings();
+  if(!current)return;
+  $('lang').value=current.lang;voices();
+  $('auto').checked=!!current.autostart;
+  if(current.hasKey){$('key').placeholder='Saved. Leave blank to keep it';$('keyStatus').className='status ok';$('keyStatus').textContent='A key is saved.';}
+  else{$('keyStatus').className='status err';$('keyStatus').textContent='No key saved yet — the AI will not work without one.';}
+  if(current.gmail){
+    $('gmail').value=current.gmail.address;
+    if(current.gmail.hasPass){$('gpass').placeholder='Saved. Leave blank to keep it';$('gmailStatus').className='status ok';$('gmailStatus').textContent='Connected as '+current.gmail.address;}
+  }
+  $('contacts').value=(current.contacts||[]).map(c=>c.name+', '+c.email).join('\n');
+}
+async function save(){
+  if(!$('key').value.trim()&&!(current&&current.hasKey)){
+    document.querySelector('[data-tab="t2"]').click();
+    $('keyStatus').className='status err';$('keyStatus').textContent='Paste a Groq key before saving.';
+    return;
+  }
+  const o=$('lang').selectedOptions[0];
+  await api.save({
+    lang:o.value,langName:o.text,voice:$('voice').value,
+    apiKey:$('key').value.trim(),autostart:$('auto').checked,
+    gmail:{address:$('gmail').value.trim(),pass:$('gpass').value.replace(/\s/g,'')},
+    contacts:$('contacts').value.split('\n').map(l=>l.split(',').map(x=>x.trim())).filter(p=>p[0]&&/@/.test(p[1]||'')).map(p=>({name:p[0],email:p[1]}))
+  });
+  $('saveMsg').className='status ok';$('saveMsg').textContent='Saved. Closing…';
+}
+load();
+</script>

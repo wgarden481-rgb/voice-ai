@@ -2,7 +2,7 @@ const {app,BrowserWindow,Tray,Menu,ipcMain,screen,session,nativeImage,safeStorag
 const path=require('path'),fs=require('fs');
 const {uIOhook}=require('uiohook-napi');
 const nodemailer=require('nodemailer');
-let setupWin,overlay,tray,settings=null,pending=null,turnNo=0;
+let setupWin,settingsWin,overlay,tray,settings=null,pending=null,turnNo=0;
 const file=()=>path.join(app.getPath('userData'),'settings.json');
 const prefs={preload:path.join(__dirname,'preload.js')};
 if(!app.requestSingleInstanceLock())app.quit();
@@ -13,6 +13,13 @@ function openSetup(){
   setupWin=new BrowserWindow({width:640,height:640,title:'Voice AI Setup',autoHideMenuBar:true,webPreferences:prefs});
   setupWin.loadFile('setup.html');
   setupWin.on('closed',()=>setupWin=null);
+}
+function openSettings(){
+  if(!settings)return openSetup();
+  if(settingsWin)return settingsWin.focus();
+  settingsWin=new BrowserWindow({width:680,height:680,title:'Voice AI Settings',autoHideMenuBar:true,webPreferences:prefs});
+  settingsWin.loadFile('settings.html');
+  settingsWin.on('closed',()=>settingsWin=null);
 }
 function makeOverlay(){
   const W=560,wa=screen.getPrimaryDisplay().workArea;
@@ -43,7 +50,8 @@ ipcMain.handle('save',(e,s)=>{
     pass:s.gmail.pass?safeStorage.encryptString(s.gmail.pass).toString('base64'):(o.gmail&&o.gmail.pass)||''}:null};
   fs.writeFileSync(file(),JSON.stringify(settings));
   app.setLoginItemSettings({openAtLogin:!!s.autostart});
-  if(setupWin)setupWin.close();
+  if(setupWin){setupWin.close();setupWin=null}
+  if(settingsWin){settingsWin.close();settingsWin=null}
 });
 
 const BASE='https://api.groq.com/openai/v1';
@@ -126,6 +134,6 @@ app.whenReady().then(()=>{
   makeOverlay();startHotkey();
   tray=new Tray(nativeImage.createFromPath(path.join(__dirname,'icon.png')).resize({width:16,height:16}));
   tray.setToolTip('Voice AI — hold Left Ctrl + Left Alt and ask');
-  tray.setContextMenu(Menu.buildFromTemplate([{label:'Settings',click:openSetup},{label:'Quit Voice AI',click:()=>app.exit()}]));
+  tray.setContextMenu(Menu.buildFromTemplate([{label:'Settings',click:openSettings},{label:'Quit Voice AI',click:()=>app.exit()}]));
   if(!settings)openSetup();
 });
