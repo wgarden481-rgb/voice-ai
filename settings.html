@@ -67,18 +67,28 @@ a{color:var(--acc-dk)}
 
   <div class="tab" id="t3">
     <h1>Gmail &amp; Contacts</h1>
-    <p class="sub">Let the AI read your inbox and send email after you confirm out loud.</p>
+    <p class="sub">Let the AI read your inbox and send email after you confirm out loud, using a real Google sign-in — no passwords typed into this app.</p>
     <div class="card">
-      <p class="hint">Needs a one-time Gmail app password: turn on 2-Step Verification, then create one at <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a>.</p>
-      <div class="field"><label for="gmail">Your Gmail address</label><input id="gmail" placeholder="you@gmail.com"></div>
-      <div class="field"><label for="gpass">Gmail app password</label><input id="gpass" type="password" placeholder="16-letter app password"></div>
-      <div class="pill" id="gmailStatus"><span class="dot"></span><span>Not connected</span></div>
+      <p class="hint" style="margin-bottom:10px"><b>One-time setup</b> in Google's own console (about 5 minutes), then it's just the button below from now on:</p>
+      <ol style="margin:0 0 14px;padding-left:18px;color:var(--mut);font-size:13px;line-height:1.75">
+        <li>Go to <a href="https://console.cloud.google.com/projectcreate" target="_blank">console.cloud.google.com</a>, sign in, and create a project (any name).</li>
+        <li>Search for <b>"Gmail API"</b> and click <b>Enable</b>.</li>
+        <li>Go to <b>APIs &amp; Services → OAuth consent screen</b>, choose <b>External</b>, fill in an app name and your email, and add your own Gmail address under <b>Test users</b>.</li>
+        <li>Go to <b>Credentials → Create Credentials → OAuth client ID</b>, choose <b>Desktop app</b>, then copy the <b>Client ID</b> and <b>Client Secret</b> it shows you.</li>
+      </ol>
+      <p class="hint" style="color:var(--err);margin-bottom:14px">Because this stays a personal, unverified project, Google will ask you to redo the sign-in below about once a week — that's a Google limit on personal apps, not a bug, and Voice AI will tell you plainly when it's time.</p>
+      <div class="field"><label for="gClientId">Google Client ID</label><input id="gClientId" placeholder="xxxx.apps.googleusercontent.com"></div>
+      <div class="field"><label for="gClientSecret">Google Client Secret</label><input id="gClientSecret" type="password" placeholder="Paste secret"></div>
+      <div class="pill" id="googleStatus"><span class="dot"></span><span>Not connected</span></div>
       <div class="btnrow">
-        <button class="act alt" type="button" onclick="testEmail()">Send test email</button>
-        <button class="act alt" type="button" onclick="testInbox()">Check inbox now</button>
-        <button class="ghost" type="button" onclick="clearGmail()">Disconnect</button>
+        <button class="act" type="button" onclick="connectGoogle()">🔵 Sign in with Google</button>
+        <button class="ghost" type="button" onclick="disconnectGoogle()">Disconnect</button>
       </div>
       <div id="gmailTestMsg" class="msg"></div>
+      <div class="btnrow" style="margin-top:10px">
+        <button class="act alt" type="button" onclick="testEmail()">Send test email</button>
+        <button class="act alt" type="button" onclick="testInbox()">Check inbox now</button>
+      </div>
     </div>
     <div class="card">
       <label style="margin-bottom:10px">Contacts</label>
@@ -133,9 +143,27 @@ async function mic(){
     $('micStatus').className='msg ok';$('micStatus').textContent='Microphone works.';}
   catch{$('micStatus').className='msg err';$('micStatus').textContent='Microphone blocked. Allow it in Windows Settings › Privacy › Microphone.';}
 }
-function clearGmail(){
-  $('gmail').value='';$('gpass').value='';$('gpass').placeholder='16-letter app password';
-  setPill('gmailStatus',null,'Will disconnect when you save');
+function connectGoogle(){
+  const id=$('gClientId').value.trim(),secret=$('gClientSecret').value.trim();
+  if(!id||!secret){setPill('googleStatus',false,'Paste both fields above first');return}
+  $('gmailTestMsg').className='msg';$('gmailTestMsg').textContent='Opening Google sign-in in your browser…';
+  api.googleConnect({clientId:id,clientSecret:secret}).then(r=>{
+    if(r.ok){
+      setPill('googleStatus',true,'Connected as '+r.address);
+      $('gmailTestMsg').className='msg ok';$('gmailTestMsg').textContent='Connected!';
+      $('gClientId').placeholder='Saved. Leave blank to keep it';$('gClientSecret').placeholder='Saved. Leave blank to keep it';
+      current=current||{};current.google={address:r.address,connected:true,hasCreds:true};
+    }else{
+      setPill('googleStatus',false,'Not connected');
+      $('gmailTestMsg').className='msg err';$('gmailTestMsg').textContent=r.error;
+    }
+  });
+}
+async function disconnectGoogle(){
+  await api.googleDisconnect();
+  setPill('googleStatus',false,'Not connected');
+  $('gmailTestMsg').className='msg';$('gmailTestMsg').textContent='Disconnected. Your Client ID/Secret are still saved — click Sign in with Google to reconnect.';
+  if(current&&current.google)current.google={...current.google,connected:false,address:''};
 }
 function esc(s){return String(s||'').replace(/"/g,'&quot;')}
 function contactRow(name,email){
@@ -172,9 +200,9 @@ async function load(){
   $('auto').checked=!!current.autostart;
   if(current.hasKey)setPill('keyStatus',true,'A key is saved'),$('key').placeholder='Saved. Leave blank to keep it';
   else setPill('keyStatus',false,'No key saved — the AI will not work yet');
-  if(current.gmail){
-    $('gmail').value=current.gmail.address;
-    if(current.gmail.hasPass){$('gpass').placeholder='Saved. Leave blank to keep it';setPill('gmailStatus',true,'Connected as '+current.gmail.address);}
+  if(current.google){
+    if(current.google.hasCreds){$('gClientId').placeholder='Saved. Leave blank to keep it';$('gClientSecret').placeholder='Saved. Leave blank to keep it';}
+    if(current.google.connected)setPill('googleStatus',true,'Connected as '+current.google.address);
   }
   $('contactRows').innerHTML='';
   (current.contacts&&current.contacts.length?current.contacts:[{name:'',email:''}]).forEach(c=>$('contactRows').appendChild(contactRow(c.name,c.email)));
@@ -190,7 +218,7 @@ async function save(){
   await api.save({
     lang:o.value,langName:o.text,voice:$('voice').value,
     apiKey:$('key').value.trim(),autostart:$('auto').checked,
-    gmail:{address:$('gmail').value.trim(),pass:$('gpass').value.replace(/\s/g,'')},
+    google:{clientId:$('gClientId').value.trim(),clientSecret:$('gClientSecret').value.trim()},
     contacts
   });
   $('saveMsg').className='msg ok';$('saveMsg').textContent='Saved. Closing…';

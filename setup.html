@@ -21,10 +21,8 @@ a{color:#4b5df0}#msg{margin-top:10px;color:#b3261e}
 <button class="alt" onclick="mic()">Test microphone</button><div id="msg"></div>
 <div><button class="alt" onclick="go(2)">Back</button><button onclick="go(4)">Continue</button></div></div>
 
-<div class="step" id="s4"><h1>Email (optional)</h1>
-<p>Let the AI send emails from your Gmail after you confirm by voice. Google needs a special one-time app password: turn on 2-Step Verification, then create one at <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a>. Skip this page if you don't want email.</p>
-<label for="gmail">Your Gmail address</label><input id="gmail" placeholder="you@gmail.com">
-<label for="gpass">Gmail app password</label><input id="gpass" type="password" placeholder="16-letter app password">
+<div class="step" id="s4"><h1>Email contacts (optional)</h1>
+<p>Save names here so you can later say "email Mom" and the AI knows who you mean. Connecting Gmail itself (a quick Google sign-in) happens afterwards, in Settings.</p>
 <label for="contacts">Contacts, one per line as: Name, email</label><textarea id="contacts" rows="4" placeholder="Mom, mom@example.com"></textarea>
 <div><button class="alt" onclick="go(3)">Back</button><button onclick="go(5)">Continue</button></div></div>
 
@@ -33,8 +31,8 @@ a{color:#4b5df0}#msg{margin-top:10px;color:#b3261e}
 <p><b>1.</b> Hold <kbd>Left Ctrl</kbd> + <kbd>Left Alt</kbd> and ask a question, like "Who is the tallest man ever?"</p>
 <p><b>2.</b> Let go of the keys. Your question appears in a small box at the top-middle of the screen.</p>
 <p><b>3.</b> The AI speaks its answer out loud and writes it under your question.</p>
-<p><b>Live info:</b> ask about news or anything recent and it searches the web.</p>
-<p><b>Email:</b> say "Email Mom that I'll be late". It reads the draft back and only sends after you hold the keys again and say "yes".</p>
+<p><b>Live info:</b> ask about news, or "open YouTube", or "what does this say" about your screen.</p>
+<p><b>Email:</b> right-click the tray icon &gt; Settings to sign in with Google (about 5 minutes, one time). After that, say "Email Mom that I'll be late" — it reads the draft back and only sends after you hold the keys again and say "yes".</p>
 <p style="color:#4a5568;font-size:13.5px">You can change your language, voice, AI key, Gmail or contacts anytime from the Voice AI icon near your clock &gt; Settings.</p>
 <button class="alt" onclick="go(4)">Back</button><button onclick="finish()">Finish and start</button></div>
 </main><script>
@@ -51,8 +49,7 @@ async function mic(){try{(await navigator.mediaDevices.getUserMedia({audio:true}
   catch{$('msg').style.color='#b3261e';$('msg').textContent='Microphone blocked. Allow it in Windows Settings › Privacy › Microphone.'}}
 function finish(){if(!$('key').value.trim()&&!(window.S0&&window.S0.hasKey)){go(3);$('msg').style.color='#b3261e';$('msg').textContent='Paste your Groq API key to continue.';return}
   const o=$('lang').selectedOptions[0];api.save({lang:o.value,langName:o.text,voice:$('voice').value,apiKey:$('key').value.trim(),autostart:$('auto').checked,
-  gmail:{address:$('gmail').value.trim(),pass:$('gpass').value.replace(/\s/g,'')},
   contacts:$('contacts').value.split('\n').map(l=>l.split(',').map(x=>x.trim())).filter(p=>p[0]&&/@/.test(p[1]||'')).map(p=>({name:p[0],email:p[1]}))})}
-api.settings().then(x=>{if(!x)return;window.S0=x;$('lang').value=x.lang;$('gmail').value=(x.gmail&&x.gmail.address)||'';$('auto').checked=!!x.autostart;
-  $('contacts').value=x.contacts.map(c=>c.name+', '+c.email).join('\n');if(x.hasKey)$('key').placeholder='Saved. Leave blank to keep it';if(x.gmail&&x.gmail.hasPass)$('gpass').placeholder='Saved. Leave blank to keep it'})
+api.settings().then(x=>{if(!x)return;window.S0=x;$('lang').value=x.lang;$('auto').checked=!!x.autostart;
+  $('contacts').value=x.contacts.map(c=>c.name+', '+c.email).join('\n');if(x.hasKey)$('key').placeholder='Saved. Leave blank to keep it'})
 </script>

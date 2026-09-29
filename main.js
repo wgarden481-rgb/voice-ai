@@ -1,14 +1,12 @@
 const {app,BrowserWindow,Tray,Menu,ipcMain,screen,session,nativeImage,safeStorage,Notification,shell,desktopCapturer}=require('electron');
-const path=require('path'),fs=require('fs');
+const path=require('path'),fs=require('fs'),crypto=require('crypto'),http=require('http');
 const {uIOhook}=require('uiohook-napi');
-const nodemailer=require('nodemailer');
-const {ImapFlow}=require('imapflow');
-const {simpleParser}=require('mailparser');
 let setupWin,settingsWin,overlay,tray,settings=null,pending=null,turnNo=0;
 const file=()=>path.join(app.getPath('userData'),'settings.json');
 const prefs={preload:path.join(__dirname,'preload.js')};
-// Encrypts the Gmail app password with Windows' own vault before saving. Falls back safely
-// if that vault isn't available, instead of crashing the save.
+
+// Encrypts secrets with Windows' own vault before saving. Falls back safely if that vault
+// isn't available, instead of crashing the save.
 const encPass=p=>{if(!p)return '';try{if(safeStorage.isEncryptionAvailable())return 'enc:'+safeStorage.encryptString(p).toString('base64');}catch{}return 'plain:'+Buffer.from(p).toString('base64');};
 const decPass=v=>{
   if(!v)return '';
@@ -18,12 +16,17 @@ const decPass=v=>{
     return safeStorage.decryptString(Buffer.from(v,'base64')); // older saved format
   }catch{return v}
 };
-function mailError(e){
-  const c=e&&e.code,m=(e&&e.message)||String(e);
-  if(c==='EAUTH'||/invalid credentials|username and password not accepted|application-specific password required/i.test(m))
-    return 'Gmail rejected the login. Re-check the app password (no spaces) and make sure 2-Step Verification is on for that Google account.';
-  if(c==='ECONNECTION'||c==='ETIMEDOUT'||c==='ENOTFOUND'||c==='ESOCKET')return 'Could not reach Gmail. Check the internet connection and try again.';
-  return 'Gmail error: '+m;
+// Keeps Google's short error code (invalid_grant, invalid_client, ...) in the message even when
+// a longer description is also present, so googleError() below can still recognize it.
+function oauthErr(j,fallback){return new Error((j&&j.error?j.error+': ':'')+((j&&j.error_description)||fallback||'OAuth error'))}
+function googleError(e){
+  const m=(e&&e.message)||String(e),c=e&&e.cause&&e.cause.code;
+  if(/invalid_grant/i.test(m))return 'Your Google sign-in expired. That happens about once a week for a personal project like this one — open Settings and click "Sign in with Google" again.';
+  if(/access_denied/i.test(m))return 'Google sign-in was cancelled or denied.';
+  if(/redirect_uri_mismatch/i.test(m))return 'Google rejected the sign-in address. Double-check the Client ID and Secret were copied correctly.';
+  if(/invalid_client/i.test(m))return 'Google did not recognize that Client ID or Secret. Re-check them in Google Cloud Console.';
+  if(c==='ENOTFOUND'||c==='ETIMEDOUT'||c==='ECONNREFUSED')return 'Could not reach Google. Check the internet connection and try again.';
+  return 'Google error: '+m;
 }
 if(!app.requestSingleInstanceLock())app.quit();
 // Opening the app (Start Menu, desktop icon, running the installer again) while it's already
@@ -40,7 +43,7 @@ function openSetup(){
 function openSettings(){
   if(!settings)return openSetup();
   if(settingsWin)return settingsWin.focus();
-  settingsWin=new BrowserWindow({width:680,height:680,title:'Voice AI Settings',autoHideMenuBar:true,webPreferences:prefs});
+  settingsWin=new BrowserWindow({width:700,height:700,title:'Voice AI Settings',autoHideMenuBar:true,webPreferences:prefs});
   settingsWin.loadFile('settings.html');
   settingsWin.on('closed',()=>settingsWin=null);
 }
@@ -66,19 +69,136 @@ function startHotkey(){
   uIOhook.start();
 }
 ipcMain.handle('settings',()=>settings&&{lang:settings.lang,langName:settings.langName,voice:settings.voice,autostart:settings.autostart,
-  hasKey:!!settings.apiKey,gmail:settings.gmail?{address:settings.gmail.address,hasPass:!!settings.gmail.pass}:null,contacts:settings.contacts||[]});
+  hasKey:!!settings.apiKey,
+  google:settings.google?{address:settings.google.address||'',connected:!!settings.google.refreshToken,hasCreds:!!(settings.google.clientId&&settings.google.clientSecret)}:null,
+  contacts:settings.contacts||[]});
 ipcMain.handle('save',(e,s)=>{
-  const o=settings||{};
-  settings={...s,apiKey:s.apiKey||o.apiKey,gmail:s.gmail&&s.gmail.address?{address:s.gmail.address,
-    pass:s.gmail.pass?encPass(s.gmail.pass):(o.gmail&&o.gmail.pass)||''}:null};
+  const o=settings||{},og=o.google||{};
+  const clientId=(s.google&&s.google.clientId)||'',clientSecret=(s.google&&s.google.clientSecret)||'';
+  let google=null;
+  if(clientId||clientSecret||og.refreshToken){
+    google={clientId:clientId?encPass(clientId):(og.clientId||''),clientSecret:clientSecret?encPass(clientSecret):(og.clientSecret||''),
+      refreshToken:og.refreshToken||'',address:og.address||''};
+  }
+  settings={...s,apiKey:s.apiKey||o.apiKey,google,contacts:s.contacts||[]};
   fs.writeFileSync(file(),JSON.stringify(settings));
   app.setLoginItemSettings({openAtLogin:!!s.autostart});
   if(setupWin){setupWin.close();setupWin=null}
   if(settingsWin){settingsWin.close();settingsWin=null}
 });
 
+// ---- Google sign-in (loopback OAuth + PKCE, the standard flow for desktop apps) ----
+function pkcePair(){
+  const verifier=crypto.randomBytes(64).toString('base64url');
+  const challenge=crypto.createHash('sha256').update(verifier).digest('base64url');
+  return {verifier,challenge};
+}
+function googleSignIn(clientId,clientSecret){
+  return new Promise((resolve,reject)=>{
+    const {verifier,challenge}=pkcePair();
+    let redirectUri,done=false;
+    const finish=(fn,val)=>{if(done)return;done=true;try{server.close()}catch{};fn(val)};
+    const server=http.createServer((req,res)=>{
+      (async()=>{
+        let u;try{u=new URL(req.url,'http://127.0.0.1')}catch{res.end();return}
+        if(u.pathname!=='/callback'){res.writeHead(404);res.end();return}
+        const code=u.searchParams.get('code'),err=u.searchParams.get('error');
+        res.writeHead(200,{'Content-Type':'text/html'});
+        res.end('<html><body style="font-family:system-ui,sans-serif;padding:60px;text-align:center;color:#1b2333"><h2>You are signed in.</h2><p>You can close this tab and go back to Voice AI.</p></body></html>');
+        if(err)return finish(reject,new Error('access_denied'));
+        if(!code)return finish(reject,new Error('Google did not send back a sign-in code.'));
+        try{
+          const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:new URLSearchParams({code,client_id:clientId,client_secret:clientSecret,redirect_uri:redirectUri,grant_type:'authorization_code',code_verifier:verifier})});
+          const j=await r.json();
+          if(!r.ok)throw oauthErr(j,'Google sign-in failed.');
+          finish(resolve,j);
+        }catch(e){finish(reject,e)}
+      })();
+    });
+    server.listen(0,'127.0.0.1',()=>{
+      const port=server.address().port;
+      redirectUri=`http://127.0.0.1:${port}/callback`;
+      const authUrl='https://accounts.google.com/o/oauth2/v2/auth?'+new URLSearchParams({
+        client_id:clientId,redirect_uri:redirectUri,response_type:'code',
+        scope:'https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly openid email',
+        access_type:'offline',prompt:'consent',code_challenge:challenge,code_challenge_method:'S256'}).toString();
+      shell.openExternal(authUrl);
+    });
+    setTimeout(()=>finish(reject,new Error('Sign-in timed out after 3 minutes. Please try again.')),180000);
+  });
+}
+async function fetchGoogleEmail(accessToken){
+  const r=await fetch('https://openidconnect.googleapis.com/v1/userinfo',{headers:{Authorization:'Bearer '+accessToken}});
+  const j=await r.json();
+  if(!r.ok)throw new Error(j.error_description||j.error||'Could not read the signed-in account.');
+  return j.email||'';
+}
+async function googleAccessToken(){
+  const g=settings&&settings.google;
+  if(!g||!g.refreshToken)throw new Error('Gmail is not connected.');
+  const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({client_id:decPass(g.clientId),client_secret:decPass(g.clientSecret),refresh_token:decPass(g.refreshToken),grant_type:'refresh_token'})});
+  const j=await r.json();
+  if(!r.ok)throw oauthErr(j,'invalid_grant');
+  return j.access_token;
+}
+const b64url=s=>Buffer.from(s).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+async function gmailSend(to,subject,body){
+  const token=await googleAccessToken(),from=settings.google.address;
+  const raw=b64url([`From: ${from}`,`To: ${to}`,`Subject: ${subject}`,'Content-Type: text/plain; charset="UTF-8"','',body].join('\r\n'));
+  const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',{method:'POST',
+    headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({raw})});
+  if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error?.message||('Gmail API error '+r.status))}
+}
+async function gmailListRecent(limit=15){
+  const token=await googleAccessToken();
+  const lr=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${limit}&labelIds=INBOX`,{headers:{Authorization:'Bearer '+token}});
+  const lj=await lr.json();
+  if(!lr.ok)throw new Error(lj.error?.message||('Gmail API error '+lr.status));
+  const out=[];
+  for(const m of (lj.messages||[])){
+    const mr=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`,{headers:{Authorization:'Bearer '+token}});
+    const mj=await mr.json();if(!mr.ok)continue;
+    const h=Object.fromEntries((mj.payload&&mj.payload.headers||[]).map(x=>[x.name,x.value]));
+    out.push({from:h.From||'Unknown',subject:h.Subject||'(no subject)',date:h.Date||'',text:(mj.snippet||'').slice(0,400)});
+  }
+  return out;
+}
+ipcMain.handle('googleConnect',async(e,{clientId,clientSecret})=>{
+  try{
+    const id=(clientId||'').trim(),secret=(clientSecret||'').trim();
+    if(!id||!secret)return{ok:false,error:'Paste both the Client ID and Client Secret first.'};
+    const tokens=await googleSignIn(id,secret);
+    if(!tokens.refresh_token)return{ok:false,error:'Google did not hand back a long-term sign-in. In your Google Account under Security \u203a Third-party access, remove Voice AI, then try signing in again.'};
+    const address=await fetchGoogleEmail(tokens.access_token).catch(()=>'');
+    settings={...(settings||{}),google:{clientId:encPass(id),clientSecret:encPass(secret),refreshToken:encPass(tokens.refresh_token),address}};
+    fs.writeFileSync(file(),JSON.stringify(settings));
+    return{ok:true,address};
+  }catch(err){return{ok:false,error:googleError(err)}}
+});
+ipcMain.handle('googleDisconnect',()=>{
+  if(settings&&settings.google){settings={...settings,google:{...settings.google,refreshToken:'',address:''}};fs.writeFileSync(file(),JSON.stringify(settings))}
+  return{ok:true};
+});
+ipcMain.handle('testEmail',async()=>{
+  try{
+    if(!settings.google||!settings.google.refreshToken)return{ok:false,error:'Sign in with Google first, then try again.'};
+    await gmailSend(settings.google.address,'Voice AI test email','If you can read this, Gmail sending works.');
+    return{ok:true};
+  }catch(e){return{ok:false,error:googleError(e)}}
+});
+ipcMain.handle('testInbox',async()=>{
+  try{
+    if(!settings.google||!settings.google.refreshToken)return{ok:false,error:'Sign in with Google first, then try again.'};
+    return{ok:true,emails:await gmailListRecent(3)};
+  }catch(e){return{ok:false,error:googleError(e)}}
+});
+
+// ---- The AI itself: Groq for chat/vision/transcription, plus tools it can call ----
 const BASE='https://api.groq.com/openai/v1';
 const MODELS=['openai/gpt-oss-120b','openai/gpt-oss-20b']; // Groq retires models; next one is tried if one is gone
+const VISION_MODELS=['qwen/qwen3.8-27b','qwen/qwen3.6-27b']; // Groq's current vision-capable models, newest first
 const today=()=>new Date().toLocaleString('en-US',{dateStyle:'full',timeStyle:'short'});
 async function groq(p,init){
   const r=await fetch(BASE+p,{...init,headers:{Authorization:'Bearer '+settings.apiKey,...init.headers}}),j=await r.json();
@@ -92,7 +212,6 @@ async function chat(body){
   }
   throw err;
 }
-const VISION_MODELS=['qwen/qwen3.8-27b','qwen/qwen3.6-27b']; // Groq's current vision-capable models, newest first
 async function visionChat(question,b64){
   let err;
   for(const model of VISION_MODELS){
@@ -153,15 +272,16 @@ async function runTool(n,a,turn,status){
   }
   if(n==='check_email'){
     status('Checking your inbox…');
-    let emails;try{emails=await fetchInbox(25)}catch(e){return mailError(e)}
+    if(!settings.google||!settings.google.refreshToken)return 'Gmail is not connected. Tell the user to sign in with Google in Voice AI settings (tray icon).';
+    let emails;try{emails=await gmailListRecent(20)}catch(e){return googleError(e)}
     if(!emails.length)return 'The inbox looks empty, or nothing could be read.';
     const q=String(a.query||'').toLowerCase().trim();
-    const matches=q?emails.filter(m=>(m.from+m.subject+m.text+m.address).toLowerCase().includes(q)):emails;
+    const matches=q?emails.filter(m=>(m.from+m.subject+m.text).toLowerCase().includes(q)):emails;
     if(!matches.length)return `No recent email found matching "${a.query}" in the last ${emails.length} messages.`;
-    return matches.slice(-8).map((m,i)=>`${i+1}. From ${m.from}${m.address?' ('+m.address+')':''}, subject "${m.subject}", ${m.date}: ${m.text.slice(0,250)}`).join('\n');
+    return matches.slice(0,8).map((m,i)=>`${i+1}. From ${m.from}, subject "${m.subject}", ${m.date}: ${m.text}`).join('\n');
   }
   if(n==='draft_email'){
-    const g=settings.gmail;if(!g||!g.pass)return 'Gmail is not connected. Tell the user to add it in Voice AI settings (tray icon).';
+    const g=settings.google;if(!g||!g.refreshToken)return 'Gmail is not connected. Tell the user to sign in with Google in Voice AI settings (tray icon).';
     const k=String(a.contact||'').toLowerCase().trim(),cs=settings.contacts||[],nm=x=>x.name.toLowerCase();
     const c=cs.find(x=>nm(x)===k)||(k&&cs.find(x=>nm(x).includes(k)||k.includes(nm(x))));
     if(!c)return `No saved contact called "${a.contact}". Saved: ${cs.map(x=>x.name).join(', ')||'none'}. Tell the user to add them in settings.`;
@@ -171,12 +291,9 @@ async function runTool(n,a,turn,status){
   if(n==='send_pending_email'){
     if(!pending)return 'There is no draft to send.';
     if(pending.turn===turn)return 'Not confirmed yet. Ask the user to say yes first.';
-    const g=settings.gmail;
-    if(!g||!g.pass)return 'Gmail is not connected. Tell the user to add it in Voice AI settings.';
-    try{
-      await nodemailer.createTransport({service:'gmail',auth:{user:g.address,pass:decPass(g.pass)}})
-        .sendMail({from:g.address,to:pending.to,subject:pending.subject,text:pending.body});
-    }catch(e){return mailError(e)}
+    const g=settings.google;
+    if(!g||!g.refreshToken)return 'Gmail is not connected. Tell the user to sign in with Google in Voice AI settings.';
+    try{await gmailSend(pending.to,pending.subject,pending.body)}catch(e){return googleError(e)}
     pending=null;return 'Sent.';
   }
   if(n==='cancel_pending_email'){pending=null;return 'Draft discarded.'}
@@ -200,42 +317,6 @@ ipcMain.handle('ask',async(e,wav)=>{
     }
     return{question,answer:'Sorry, that took too many steps. Please try again.'};
   }catch(err){return{error:String(err.message||err)}}
-});
-async function fetchInbox(limit=25){
-  const g=settings&&settings.gmail;
-  if(!g||!g.pass)throw new Error('Gmail is not connected.');
-  const client=new ImapFlow({host:'imap.gmail.com',port:993,secure:true,auth:{user:g.address,pass:decPass(g.pass)},logger:false});
-  await client.connect();
-  const lock=await client.getMailboxLock('INBOX');
-  try{
-    const status=await client.status('INBOX',{messages:true});
-    const total=status.messages||0;
-    if(!total)return [];
-    const start=Math.max(1,total-limit+1);
-    const out=[];
-    for await (const msg of client.fetch(`${start}:*`,{envelope:true,source:true})){
-      let text='';
-      try{text=((await simpleParser(msg.source)).text||'').replace(/\s+/g,' ').trim()}catch{}
-      const from=msg.envelope.from&&msg.envelope.from[0]||{};
-      out.push({from:from.name||from.address||'Unknown',address:from.address||'',
-        subject:msg.envelope.subject||'(no subject)',
-        date:msg.envelope.date?new Date(msg.envelope.date).toLocaleString():'',text:text.slice(0,400)});
-    }
-    return out.reverse();
-  }finally{lock.release();await client.logout().catch(()=>{})}
-}
-ipcMain.handle('testEmail',async()=>{
-  try{
-    const g=settings&&settings.gmail;
-    if(!g||!g.pass)return{ok:false,error:'Add a Gmail address and app password above, then save first.'};
-    await nodemailer.createTransport({service:'gmail',auth:{user:g.address,pass:decPass(g.pass)}})
-      .sendMail({from:g.address,to:g.address,subject:'Voice AI test email',text:'If you can read this, Gmail sending works.'});
-    return{ok:true};
-  }catch(e){return{ok:false,error:mailError(e)}}
-});
-ipcMain.handle('testInbox',async()=>{
-  try{const emails=await fetchInbox(3);return{ok:true,emails}}
-  catch(e){return{ok:false,error:mailError(e)}}
 });
 ipcMain.on('hide',()=>overlay&&overlay.hide());
 

@@ -2,6 +2,8 @@ const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('api',{
   settings:()=>ipcRenderer.invoke('settings'),
   save:s=>ipcRenderer.invoke('save',s),
+  googleConnect:c=>ipcRenderer.invoke('googleConnect',c),
+  googleDisconnect:()=>ipcRenderer.invoke('googleDisconnect'),
   testEmail:()=>ipcRenderer.invoke('testEmail'),
   testInbox:()=>ipcRenderer.invoke('testInbox'),
   ask:w=>ipcRenderer.invoke('ask',w),
