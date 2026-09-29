@@ -7,6 +7,7 @@ const $=i=>document.getElementById(i);
 let S,ctx,stream,chunks=[],ready=Promise.resolve(),hideT;
 const show=(q,a)=>{clearTimeout(hideT);$('q').textContent=q;$('a').textContent=a};
 const done=(ms=6000)=>{hideT=setTimeout(api.hide,ms)};
+api.onStatus(t=>{$('a').textContent=t});
 api.onStart(()=>{ready=(async()=>{
   speechSynthesis.cancel();S=await api.settings();show('Listening…','');chunks=[];
   try{stream=await navigator.mediaDevices.getUserMedia({audio:true});}catch{show('Microphone blocked','Allow microphone access in Windows Settings › Privacy.');return done();}

@@ -4,17 +4,43 @@
   "description": "Voice AI assistant",
   "author": "Voice AI",
   "main": "main.js",
-  "scripts": { "start": "electron ." },
-  "dependencies": { "uiohook-napi": "^1.5.4" },
-  "devDependencies": { "electron": "^33.2.0", "electron-builder": "^25.1.8" },
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "uiohook-napi": "^1.5.4",
+    "nodemailer": "^6.9.16"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
   "build": {
     "appId": "com.example.voiceai",
     "productName": "Voice AI",
     "npmRebuild": false,
     "artifactName": "Voice-AI-Setup.${ext}",
-    "files": ["main.js", "preload.js", "overlay.html", "setup.html", "icon.png"],
-    "asarUnpack": ["node_modules/uiohook-napi/**"],
-    "win": { "target": "nsis", "icon": "icon.png", "signAndEditExecutable": false },
-    "nsis": { "oneClick": false, "perMachine": true, "allowElevation": true, "allowToChangeInstallationDirectory": true, "runAfterFinish": true }
+    "files": [
+      "main.js",
+      "preload.js",
+      "overlay.html",
+      "setup.html",
+      "icon.png"
+    ],
+    "asarUnpack": [
+      "node_modules/uiohook-napi/**"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true
+    }
   }
 }

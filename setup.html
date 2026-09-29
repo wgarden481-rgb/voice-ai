@@ -2,7 +2,7 @@
 body{margin:0;font:15px/1.5 "Segoe UI",system-ui,sans-serif;background:#f3f5f9;color:#1b2333}
 main{max-width:520px;margin:0 auto;padding:36px 24px}h1{font-size:26px;margin:0 0 6px}p{color:#4a5568}
 .step{display:none}.step.on{display:block}label{display:block;margin:16px 0 6px;font-weight:600}
-select,input{width:100%;padding:10px;border:1px solid #c5cce0;border-radius:8px;font:inherit;box-sizing:border-box}
+select,input,textarea{width:100%;padding:10px;border:1px solid #c5cce0;border-radius:8px;font:inherit;box-sizing:border-box}
 button{margin:18px 8px 0 0;padding:10px 18px;border:0;border-radius:8px;background:#4b5df0;color:#fff;font:inherit;cursor:pointer}
 button.alt{background:#dfe4f5;color:#1b2333}kbd{background:#fff;border:1px solid #c5cce0;border-radius:5px;padding:1px 7px}
 a{color:#4b5df0}#msg{margin-top:10px;color:#b3261e}
@@ -21,12 +21,21 @@ a{color:#4b5df0}#msg{margin-top:10px;color:#b3261e}
 <button class="alt" onclick="mic()">Test microphone</button><div id="msg"></div>
 <div><button class="alt" onclick="go(2)">Back</button><button onclick="go(4)">Continue</button></div></div>
 
-<div class="step" id="s4"><h1>How it works</h1>
+<div class="step" id="s4"><h1>Email (optional)</h1>
+<p>Let the AI send emails from your Gmail after you confirm by voice. Google needs a special one-time app password: turn on 2-Step Verification, then create one at <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a>. Skip this page if you don't want email.</p>
+<label for="gmail">Your Gmail address</label><input id="gmail" placeholder="you@gmail.com">
+<label for="gpass">Gmail app password</label><input id="gpass" type="password" placeholder="16-letter app password">
+<label for="contacts">Contacts, one per line as: Name, email</label><textarea id="contacts" rows="4" placeholder="Mom, mom@example.com"></textarea>
+<div><button class="alt" onclick="go(3)">Back</button><button onclick="go(5)">Continue</button></div></div>
+
+<div class="step" id="s5"><h1>How it works</h1>
 <p>Voice AI runs quietly in the background (look for its icon near the clock).</p>
 <p><b>1.</b> Hold <kbd>Left Ctrl</kbd> + <kbd>Left Alt</kbd> and ask a question, like "Who is the tallest man ever?"</p>
 <p><b>2.</b> Let go of the keys. Your question appears in a small box at the top-middle of the screen.</p>
 <p><b>3.</b> The AI speaks its answer out loud and writes it under your question.</p>
-<button class="alt" onclick="go(3)">Back</button><button onclick="finish()">Finish and start</button></div>
+<p><b>Live info:</b> ask about news or anything recent and it searches the web.</p>
+<p><b>Email:</b> say "Email Mom that I'll be late". It reads the draft back and only sends after you hold the keys again and say "yes".</p>
+<button class="alt" onclick="go(4)">Back</button><button onclick="finish()">Finish and start</button></div>
 </main><script>
 const L=[['English','en-US'],['Español','es-ES'],['Français','fr-FR'],['Deutsch','de-DE'],['Italiano','it-IT'],['Português','pt-BR'],['日本語','ja-JP'],['한국어','ko-KR'],['中文','zh-CN'],['हिन्दी','hi-IN'],['العربية','ar-SA'],['Русский','ru-RU']];
 const $=i=>document.getElementById(i);
@@ -39,6 +48,10 @@ function test(){speechSynthesis.cancel();const t=new SpeechSynthesisUtterance('H
   const v=speechSynthesis.getVoices().find(x=>x.name===$('voice').value);if(v)t.voice=v;speechSynthesis.speak(t)}
 async function mic(){try{(await navigator.mediaDevices.getUserMedia({audio:true})).getTracks().forEach(t=>t.stop());$('msg').style.color='#1a7f37';$('msg').textContent='Microphone works.'}
   catch{$('msg').style.color='#b3261e';$('msg').textContent='Microphone blocked. Allow it in Windows Settings › Privacy › Microphone.'}}
-function finish(){if(!$('key').value.trim()){go(3);$('msg').style.color='#b3261e';$('msg').textContent='Paste your Groq API key to continue.';return}
-  const o=$('lang').selectedOptions[0];api.save({lang:o.value,langName:o.text,voice:$('voice').value,apiKey:$('key').value.trim(),autostart:$('auto').checked})}
+function finish(){if(!$('key').value.trim()&&!(window.S0&&window.S0.hasKey)){go(3);$('msg').style.color='#b3261e';$('msg').textContent='Paste your Groq API key to continue.';return}
+  const o=$('lang').selectedOptions[0];api.save({lang:o.value,langName:o.text,voice:$('voice').value,apiKey:$('key').value.trim(),autostart:$('auto').checked,
+  gmail:{address:$('gmail').value.trim(),pass:$('gpass').value.replace(/\s/g,'')},
+  contacts:$('contacts').value.split('\n').map(l=>l.split(',').map(x=>x.trim())).filter(p=>p[0]&&/@/.test(p[1]||'')).map(p=>({name:p[0],email:p[1]}))})}
+api.settings().then(x=>{if(!x)return;window.S0=x;$('lang').value=x.lang;$('gmail').value=(x.gmail&&x.gmail.address)||'';$('auto').checked=!!x.autostart;
+  $('contacts').value=x.contacts.map(c=>c.name+', '+c.email).join('\n');if(x.hasKey)$('key').placeholder='Saved. Leave blank to keep it';if(x.gmail&&x.gmail.hasPass)$('gpass').placeholder='Saved. Leave blank to keep it'})
 </script>
