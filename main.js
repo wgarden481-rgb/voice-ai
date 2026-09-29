@@ -1,4 +1,4 @@
-const {app,BrowserWindow,Tray,Menu,ipcMain,screen,session,nativeImage,safeStorage}=require('electron');
+const {app,BrowserWindow,Tray,Menu,ipcMain,screen,session,nativeImage,safeStorage,Notification}=require('electron');
 const path=require('path'),fs=require('fs');
 const {uIOhook}=require('uiohook-napi');
 const nodemailer=require('nodemailer');
@@ -6,6 +6,9 @@ let setupWin,settingsWin,overlay,tray,settings=null,pending=null,turnNo=0;
 const file=()=>path.join(app.getPath('userData'),'settings.json');
 const prefs={preload:path.join(__dirname,'preload.js')};
 if(!app.requestSingleInstanceLock())app.quit();
+// Opening the app (Start Menu, desktop icon, running the installer again) while it's already
+// running in the tray used to do nothing visible. Now it brings up Settings instead.
+app.on('second-instance',()=>{settings?openSettings():openSetup();});
 app.on('window-all-closed',()=>{}); // keep running in background
 
 function openSetup(){
@@ -135,5 +138,7 @@ app.whenReady().then(()=>{
   tray=new Tray(nativeImage.createFromPath(path.join(__dirname,'icon.png')).resize({width:16,height:16}));
   tray.setToolTip('Voice AI — hold Left Ctrl + Left Alt and ask');
   tray.setContextMenu(Menu.buildFromTemplate([{label:'Settings',click:openSettings},{label:'Quit Voice AI',click:()=>app.exit()}]));
+  tray.on('click',openSettings); // left-click the tray icon also opens Settings, not just right-click
   if(!settings)openSetup();
+  else if(Notification.isSupported())new Notification({title:'Voice AI is running',body:'Right-click the icon near your clock, or reopen Voice AI, to see Settings.'}).show();
 });
