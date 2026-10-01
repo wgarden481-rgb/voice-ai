@@ -1,41 +1,46 @@
 <!doctype html><meta charset="utf-8"><title>Voice AI Settings</title><style>
-:root{--bg:#f3f5f9;--card:#fff;--ink:#1b2333;--mut:#5a6478;--line:#e1e5f0;--acc:#4b5df0;--acc-dk:#3a49d6;--ok:#1a7f37;--err:#c0362c}
+:root{--bg:#fbfbfc;--card:#fff;--ink:#33363d;--mut:#80838c;--line:#ececef;--acc:#6b7bb0;--acc-dk:#57678f;--acc-soft:#eef0f7;--ok:#4a8f6a;--err:#c17a6e;--warn:#c99a4a;--warn-bg:#fdf7ec}
 *{box-sizing:border-box}
-body{margin:0;font:14.5px/1.55 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);display:flex;height:100vh;overflow:hidden}
+body{margin:0;font:14.5px/1.6 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);display:flex;height:100vh;overflow:hidden}
 nav{width:196px;background:var(--card);border-right:1px solid var(--line);padding:22px 12px;flex-shrink:0}
-nav .brand{font-weight:700;font-size:15.5px;padding:0 10px 18px}
-nav button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:10px 12px;border:0;background:none;font:inherit;cursor:pointer;color:var(--mut);border-radius:9px;margin-bottom:2px}
-nav button:hover{background:#f0f2fa}
-nav button.on{background:#eceeff;color:var(--acc-dk);font-weight:600}
+nav .brand{font-weight:600;font-size:15px;padding:0 10px 18px;color:var(--ink)}
+nav button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:10px 12px;border:0;background:none;font:inherit;cursor:pointer;color:var(--mut);border-radius:10px;margin-bottom:2px;transition:background .12s}
+nav button:hover{background:#f6f6f8}
+nav button.on{background:var(--acc-soft);color:var(--acc-dk);font-weight:600}
 main{flex:1;padding:30px 36px;overflow-y:auto}
-.tab{display:none;max-width:520px}.tab.on{display:block;animation:fade .15s ease}
+.tab{display:none;max-width:540px}.tab.on{display:block;animation:fade .15s ease}
 @keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
-h1{font-size:19px;margin:0 0 4px}
+h1{font-size:18.5px;margin:0 0 4px;font-weight:600;color:var(--ink)}
 .sub{color:var(--mut);margin:0 0 20px;font-size:13.5px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
-label{display:block;margin:0 0 6px;font-weight:600;font-size:13.5px}
-select,input,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font:inherit;background:#fbfbfe}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 1px 2px rgba(30,30,40,.03)}
+label{display:block;margin:0 0 6px;font-weight:600;font-size:13.5px;color:var(--ink)}
+select,input,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fdfdfe;color:var(--ink)}
 select:focus,input:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}
 .field{margin-bottom:14px}
 .row{display:flex;gap:10px}
 .row>*{flex:1}
-button.act{padding:9px 16px;border:0;border-radius:9px;background:var(--acc);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button.act{padding:9px 16px;border:0;border-radius:10px;background:var(--acc);color:#fff;font:inherit;font-weight:600;cursor:pointer;transition:background .12s}
 button.act:hover{background:var(--acc-dk)}
-button.alt{background:#eceeff;color:var(--acc-dk);font-weight:600}
-button.ghost{background:none;color:var(--err);border:1px solid var(--line);padding:6px 10px;border-radius:8px;font:inherit;cursor:pointer}
+button.alt{background:var(--acc-soft);color:var(--acc-dk);font-weight:600}
+button.alt:hover{background:#e4e7f1}
+button.ghost{background:none;color:var(--mut);border:1px solid var(--line);padding:6px 10px;border-radius:9px;font:inherit;cursor:pointer}
+button.ghost:hover{color:var(--err);border-color:var(--err)}
 .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
-.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:3px 0}
-.dot{width:8px;height:8px;border-radius:50%;background:#c5cce0;flex-shrink:0}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:3px 0;color:var(--mut)}
+.dot{width:8px;height:8px;border-radius:50%;background:#d8d9de;flex-shrink:0}
 .dot.ok{background:var(--ok)}.dot.err{background:var(--err)}
-.msg{margin-top:8px;font-size:13px}
+.msg{margin-top:8px;font-size:13px;color:var(--mut)}
 .msg.ok{color:var(--ok)}.msg.err{color:var(--err)}
 .contact{display:flex;gap:8px;margin-bottom:8px;align-items:center}
 .contact input{flex:1}
-.contact button{flex:0 0 auto;width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--err);cursor:pointer;font-size:15px;line-height:1}
+.contact button{flex:0 0 auto;width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--mut);cursor:pointer;font-size:14px;line-height:1}
+.contact button:hover{color:var(--err);border-color:var(--err)}
 kbd{background:#fff;border:1px solid var(--line);border-radius:5px;padding:1px 8px}
 #saveBar{position:sticky;bottom:-30px;background:linear-gradient(var(--bg)00,var(--bg));padding:14px 0 4px;display:flex;align-items:center;gap:12px;margin-top:6px}
 .hint{color:var(--mut);font-size:13px;margin:0 0 14px}
 a{color:var(--acc-dk)}
+.callout{background:var(--warn-bg);border:1px solid #f0e2c4;border-radius:12px;padding:12px 14px;font-size:13px;color:#8a6a2e;margin:0 0 14px;line-height:1.6}
+.callout b{color:#73551f}
 </style>
 <nav>
   <div class="brand">🎙️ Voice AI</div>
@@ -70,13 +75,15 @@ a{color:var(--acc-dk)}
     <p class="sub">Let the AI read your inbox and send email after you confirm out loud, using a real Google sign-in — no passwords typed into this app.</p>
     <div class="card">
       <p class="hint" style="margin-bottom:10px"><b>One-time setup</b> in Google's own console (about 5 minutes), then it's just the button below from now on:</p>
-      <ol style="margin:0 0 14px;padding-left:18px;color:var(--mut);font-size:13px;line-height:1.75">
+      <ol style="margin:0 0 14px;padding-left:18px;color:var(--mut);font-size:13px;line-height:1.8">
         <li>Go to <a href="https://console.cloud.google.com/projectcreate" target="_blank">console.cloud.google.com</a>, sign in, and create a project (any name).</li>
         <li>Search for <b>"Gmail API"</b> and click <b>Enable</b>.</li>
-        <li>Go to <b>APIs &amp; Services → OAuth consent screen</b>, choose <b>External</b>, fill in an app name and your email, and add your own Gmail address under <b>Test users</b>.</li>
-        <li>Go to <b>Credentials → Create Credentials → OAuth client ID</b>, choose <b>Desktop app</b>, then copy the <b>Client ID</b> and <b>Client Secret</b> it shows you.</li>
+        <li>Go to <b>APIs &amp; Services → OAuth consent screen</b>, click <b>Get started</b>, choose <b>External</b>, and fill in an app name and your email.</li>
+        <li>Still there, click the <b>Audience</b> tab → <b>Test users</b> → <b>Add users</b>, and type the <i>exact</i> Gmail address you plan to sign in with. Click Save.</li>
+        <li>Click <b>Clients → Create Client</b>, choose <b>Desktop app</b>, then copy the <b>Client ID</b> and <b>Client Secret</b> it shows you.</li>
       </ol>
-      <p class="hint" style="color:var(--err);margin-bottom:14px">Because this stays a personal, unverified project, Google will ask you to redo the sign-in below about once a week — that's a Google limit on personal apps, not a bug, and Voice AI will tell you plainly when it's time.</p>
+      <div class="callout">⚠️ <b>The step almost everyone misses is #4</b> — if you sign in below and see Google's "Access blocked… Error 403: access_denied" page, it means your email wasn't added as a test user yet. Go back to <b>Audience → Test users</b>, add it, then come back and try Sign in with Google again.</div>
+      <p class="hint" style="color:var(--err);margin-bottom:14px">Because this stays a personal, unverified project, Google will also ask you to redo the sign-in below about once a week — that's a Google limit on personal apps, not a bug, and Voice AI will tell you plainly when it's time.</p>
       <div class="field"><label for="gClientId">Google Client ID</label><input id="gClientId" placeholder="xxxx.apps.googleusercontent.com"></div>
       <div class="field"><label for="gClientSecret">Google Client Secret</label><input id="gClientSecret" type="password" placeholder="Paste secret"></div>
       <div class="pill" id="googleStatus"><span class="dot"></span><span>Not connected</span></div>

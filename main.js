@@ -125,7 +125,7 @@ function googleSignIn(clientId,clientSecret){
         access_type:'offline',prompt:'consent',code_challenge:challenge,code_challenge_method:'S256'}).toString();
       shell.openExternal(authUrl);
     });
-    setTimeout(()=>finish(reject,new Error('Sign-in timed out after 3 minutes. Please try again.')),180000);
+    setTimeout(()=>finish(reject,new Error('No response from Google after 3 minutes. If you saw a Google page saying "Access blocked" with a 403 error, add your exact email under Audience \u2192 Test users in Google Cloud Console, then try again.')),180000);
   });
 }
 async function fetchGoogleEmail(accessToken){
